@@ -1,0 +1,112 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: alien4cloud-cluster-topology
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: Alien4Cloud topology with 2 remote ES node (1 duplica)
+
+imports:
+  - elasticsearch-type:1.4.0-SNAPSHOT
+  - alien-type:1.4.0-SNAPSHOT
+  - org.alien4cloud.lang.java.jdk.linux:1.4.0-SNAPSHOT
+  - tosca-normative-types:1.0.0-ALIEN14
+
+topology_template:
+  node_templates:
+    JDK:
+      type: org.alien4cloud.lang.java.jdk.linux.nodes.OracleJDK
+      properties:
+        java_url: "https://edelivery.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+        java_home: /opt/java
+      requirements:
+        - host:
+            node: AlienFront
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+    Alien:
+      type: org.alien4cloud.nodes.Alien
+      properties:
+        alien_url: "https://fastconnect.org/maven/service/local/repositories/opensource/content/alien4cloud/alien4cloud-ui/1.1.0/alien4cloud-ui-1.1.0-standalone.war"
+        context_root: /
+      requirements:
+        - java:
+            node: JDK
+            capability: org.alien4cloud.lang.java.pub.capabilities.JDK
+            relationship: org.alien4cloud.lang.java.pub.relationships.JavaSoftwareHostedOnJDK
+        - elasticsearch:
+            node: ElasticSearch1
+            capability: org.alien4cloud.capabilities.ElasticSearch
+            relationship: org.alien4cloud.relationships.AlienConnectToElasticSearch
+        - elasticsearch:
+            node: ElasticSearch0
+            capability: org.alien4cloud.capabilities.ElasticSearch
+            relationship: org.alien4cloud.relationships.AlienConnectToElasticSearch
+    ElasticSearch0:
+      type: org.alien4cloud.nodes.ElasticSearch
+      properties:
+        elasticsearch_url: "https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.deb"
+      requirements:
+        - java:
+            node: JDK_P0
+            capability: org.alien4cloud.lang.java.pub.capabilities.JDK
+            relationship: org.alien4cloud.lang.java.pub.relationships.JavaSoftwareHostedOnJDK
+        - elasticsearch:
+            node: ElasticSearch1
+            capability: org.alien4cloud.capabilities.ElasticSearch
+            relationship: org.alien4cloud.relationships.ConnectElasticSearchNodes
+    ElasticSearch1:
+      type: org.alien4cloud.nodes.ElasticSearch
+      properties:
+        elasticsearch_url: "https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.deb"
+      requirements:
+        - java:
+            node: JDK_P1
+            capability: org.alien4cloud.lang.java.pub.capabilities.JDK
+            relationship: org.alien4cloud.lang.java.pub.relationships.JavaSoftwareHostedOnJDK
+    Network:
+      type: tosca.nodes.Network
+      properties:
+        ip_version: 4
+    AlienFront:
+      type: tosca.nodes.Compute
+      requirements:
+        - network:
+            node: Network
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+    JDK_P1:
+      type: org.alien4cloud.lang.java.jdk.linux.nodes.OracleJDK
+      properties:
+        java_url: "https://edelivery.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+        java_home: /opt/java
+      requirements:
+        - host:
+            node: Persistence1
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+    JDK_P0:
+      type: org.alien4cloud.lang.java.jdk.linux.nodes.OracleJDK
+      properties:
+        java_url: "https://edelivery.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+        java_home: /opt/java
+      requirements:
+        - host:
+            node: Persistence0
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+    Persistence0:
+      type: tosca.nodes.Compute
+      requirements:
+        - network:
+            node: Network
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+    Persistence1:
+      type: tosca.nodes.Compute
+      requirements:
+        - network:
+            node: Network
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network

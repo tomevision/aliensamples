@@ -1,0 +1,68 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: tomcat-war-topology
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: A simple topology of a war application hosted on a tomcat server.
+
+imports:
+  - tomcat-war-types:1.4.0-SNAPSHOT
+  - alien-base-types:1.4.0
+  - tosca-normative-types:1.0.0-ALIEN14
+
+topology_template:
+  inputs:
+    os_arch:
+      type: string
+      required: true
+      constraints:
+        - valid_values: [x86_32, x86_64]
+      description: The host Operating System (OS) architecture.
+    os_type:
+      type: string
+      required: true
+      constraints:
+        - valid_values: [linux, aix, mac os, windows]
+      description: The host Operating System (OS) type.
+  node_templates:
+    War:
+      type: org.alien4cloud.nodes.War
+      requirements:
+        - host:
+            node: Tomcat
+            capability: org.alien4cloud.capabilities.WarContainer
+            relationship: org.alien4cloud.relationships.WarHostedOnTomcat
+    Tomcat:
+      type: org.alien4cloud.nodes.Tomcat
+      properties:
+        tomcat_home: /opt/tomcat
+        download_url: "https://archive.apache.org/dist/tomcat/tomcat-8/v8.0.39/bin/apache-tomcat-8.0.39.tar.gz"
+      requirements:
+        - host:
+            node: Java
+            capability: org.alien4cloud.lang.java.pub.capabilities.JDK
+            relationship: org.alien4cloud.lang.java.pub.relationships.JavaSoftwareHostedOnJDK
+    Compute:
+      type: tosca.nodes.Compute
+      capabilities:
+        os:
+          properties:
+            architecture: { get_input: os_arch }
+            type: { get_input: os_type }
+    Java:
+      type: org.alien4cloud.lang.java.jdk.linux.nodes.OracleJDK
+      properties:
+        java_url: "https://edelivery.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+        java_home: /opt/java
+      requirements:
+        - host:
+            node: Compute
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+  outputs:
+    War_application_url:
+      value: { get_attribute: [ War, application_url ] }
+    Tomcat_server_url:
+      value: { get_attribute: [ Tomcat, server_url ] }

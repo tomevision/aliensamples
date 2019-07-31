@@ -1,0 +1,45 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: website-type
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: A static website packaged in a zip file type to be hosted on a webserver (apache)
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+  - apache-type:1.4.0-SNAPSHOT
+
+node_types:
+  org.alien4cloud.nodes.WebSite:
+    derived_from: tosca.nodes.WebApplication
+    description: A static website packaged in a zip file.
+    requirements:
+      - host:
+          capability: org.alien4cloud.capabilities.ApacheContainer
+          relationship: org.alien4cloud.relationships.WebSiteHostedOn
+    properties:
+      zip_url:
+        type: string
+        required: false
+      context_path:
+        type: string
+        required: false
+    artifacts:
+      - website_zip:
+          type: tosca.artifacts.File
+
+relationship_types:
+  org.alien4cloud.relationships.WebSiteHostedOn:
+    derived_from: tosca.relationships.HostedOn
+    description: Relationship use to describe that the website is deployed on the target Apache server.
+    valid_target_types: [ org.alien4cloud.capabilities.ApacheContainer ]
+    interfaces:
+      Configure:
+          post_configure_source:
+            inputs:
+              WEBFILE_URL: { get_property: [SOURCE, zip_url] }
+              CONTEXT_PATH: { get_property: [SOURCE, context_path] }
+              DOC_ROOT: { get_property: [TARGET, document_root] }
+            implementation: scripts/deploy_website.sh

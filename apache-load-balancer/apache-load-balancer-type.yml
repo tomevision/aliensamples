@@ -1,0 +1,123 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: apache-load-balancer-type
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: TOSCA simple profile with Apache Load Balancer.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+
+node_types:
+  org.alien4cloud.nodes.ApacheLoadBalancer:
+    derived_from: tosca.nodes.LoadBalancer
+    description: >
+      The TOSCA Apache Node Type represents an apache load balancer that can be run on a debian based os.
+    metadata:
+      icon: /images/Apache_PoweredBy.png
+    properties:
+      component_version:
+        type: version
+        description: Using apt-get we don't really know which is the exact installed version as it depends from the repo settings.
+        default: 2
+        constraints:
+          - equal: 2
+    attributes:
+      load_balancer_url: { concat: ["http://", get_attribute: [HOST, public_ip_address], ":", get_property: [SELF, client, port], "/"] }
+    # Overrides the actual client endpoint
+    capabilities:
+      client:
+        type: tosca.capabilities.Endpoint
+        occurrences: [0, UNBOUNDED]
+        description: the Floating (IP) client’s on the public network can connect to
+        properties:
+          protocol: http
+          port: 80 # set a default value for the port
+    # overrides the tosca Load Balancer endpoint to specify the relationship to use.
+    requirements:
+      - application:
+          capability: tosca.capabilities.Endpoint
+          relationship: org.alien4cloud.relationships.RoutesToApacheLoadBalancer
+          occurrences: [ 0, UNBOUNDED ]
+          description: Connection to one or more load balanced applications
+      - host: # Overrides the parent host requirement to add a specific node_filter and add OS constraints as Impl is based on apt and so restricted to debian.
+          capability: tosca.capabilities.Container
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ debian, ubuntu, knoppix ] }
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            PORT: { get_property: [SELF, client, port] }
+          implementation: scripts/install_apache_load_balancer.sh
+        start: scripts/start_apache_load_balancer.sh
+        stop: scripts/stop_apache_load_balancer.sh
+
+relationship_types:
+  org.alien4cloud.relationships.RoutesToApacheLoadBalancer:
+    derived_from: tosca.relationships.RoutesTo
+    description: Relationship that configures the Apache Load Balancer so it
+    interfaces:
+      Configure:
+          add_target:
+            inputs:
+              PROTOCOL: { get_attribute: [TARGET, protocol] }
+              IP: { get_attribute: [TARGET, ip_address] }
+              PORT: { get_attribute: [TARGET, port] }
+              URL_PATH: { get_attribute: [TARGET, url_path] }
+            implementation: scripts/add_web_app_to_load_balancer.sh
+          remove_target:
+            inputs:
+              PROTOCOL: { get_attribute: [TARGET, protocol] }
+              IP: { get_attribute: [TARGET, ip_address] }
+              PORT: { get_attribute: [TARGET, port] }
+              URL_PATH: { get_attribute: [TARGET, url_path] }
+            implementation: scripts/remove_web_app_from_load_balancer.sh
+
+  org.alien4cloud.relationships.RoutesToApacheLoadBalancerService:
+    derived_from: tosca.relationships.RoutesTo
+    description: >
+      Specific relationship to route an application using an apache load balancer started a a service.
+      This relationship is expected to be processed on a sandboxed manager node and to connect to the Apache Load Balancer machine through ssh.
+      The path to the ssh key to use for the apache machine connexion can be specified through a property.
+    properties:
+      user:
+        type: string
+        default: ubuntu
+    artifacts:
+      - script_directory:
+          file: scripts
+          type: tosca.artifacts.File
+      - ssh_key:
+          # The service key, configured here in the type, is a workaround as artifact on relationship is not yet configurable
+          # The file is empty, you should configure it yourself
+          file: ssh/service_key.pem
+          type: tosca.artifacts.File
+    interfaces:
+      Configure:
+          add_target:
+            inputs:
+              USER: { get_property: [SELF, user] }
+              PROTOCOL: { get_attribute: [TARGET, protocol] }
+              IP: { get_attribute: [TARGET, ip_address] }
+              PORT: { get_attribute: [TARGET, port] }
+              URL_PATH: { get_attribute: [TARGET, url_path] }
+            implementation: scripts/service_add_web_app_to_load_balancer.sh
+          remove_target:
+            inputs:
+              USER: { get_property: [SELF, user] }
+              PROTOCOL: { get_attribute: [TARGET, protocol] }
+              IP: { get_attribute: [TARGET, ip_address] }
+              PORT: { get_attribute: [TARGET, port] }
+              URL_PATH: { get_attribute: [TARGET, url_path] }
+            implementation: scripts/service_remove_web_app_from_load_balancer.sh

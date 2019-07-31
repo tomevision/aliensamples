@@ -1,0 +1,32 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: git-type
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: Git install on Debian systems.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+
+node_types:
+  org.alien4cloud.nodes.Git:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: Git install through apt-get.
+    metadata:
+      icon: /images/git.png
+    properties:
+      git_user:
+        type: string
+        default: Git User
+      git_email:
+        type: string
+        default: user@mydomain.org
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            GIT_USER: { get_property: [SELF, git_user] }
+            GIT_EMAIL: { get_property: [SELF, git_email] }
+          implementation: scripts/installGit.sh

@@ -1,0 +1,37 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: host-pool-service-topology
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: Host pool service template
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+  - host-pool-service-types:1.4.0-SNAPSHOT
+
+topology_template:
+  node_templates:
+    Network:
+      type: tosca.nodes.Network
+      properties:
+        ip_version: 4
+    Compute:
+      type: tosca.nodes.Compute
+      requirements:
+        - network:
+            node: Network
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+
+    HostPoolService:
+      type: org.alien4cloud.nodes.HostPoolService
+      requirements:
+        - host:
+            node: Compute
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+  outputs:
+    HostPoolService_endpoint:
+      value: { get_attribute: [ HostPoolService, endpoint ] }

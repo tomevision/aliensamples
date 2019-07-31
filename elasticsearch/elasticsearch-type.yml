@@ -1,0 +1,66 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: elasticsearch-type
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+description: TOSCA simple profile with ElasticSearch.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+  - org.alien4cloud.lang.java.jdk.linux:1.4.0-SNAPSHOT
+
+node_types:
+  org.alien4cloud.nodes.ElasticSearch:
+    derived_from: org.alien4cloud.lang.java.pub.nodes.JavaSoftware
+    description: >
+      Installation of ElasticSearch
+    metadata:
+      icon: images/elasticsearch.png
+    properties:
+      elasticsearch_url:
+        type: string
+        required: true
+        default: "https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.0.deb"
+    requirements:
+      - elasticsearch:
+          capability: org.alien4cloud.capabilities.ElasticSearch
+          relationship: org.alien4cloud.relationships.ConnectElasticSearchNodes
+          occurrences: [0, UNBOUNDED]
+    capabilities:
+      elasticsearch:
+        type: org.alien4cloud.capabilities.ElasticSearch
+        occurrences: [0, UNBOUNDED]
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            APPLICATION_URL: { get_property: [SELF, elasticsearch_url] }
+          implementation: scripts/install_elasticsearch.sh
+        start:
+          implementation: scripts/start_elasticsearch.sh
+    artifacts:
+      - configs:
+          file: configs
+          type: tosca.artifacts.File
+
+capability_types:
+  org.alien4cloud.capabilities.ElasticSearch:
+    derived_from: tosca.capabilities.Root
+
+relationship_types:
+  org.alien4cloud.relationships.ConnectElasticSearchNodes:
+    derived_from: tosca.relationships.ConnectsTo
+    description: Relationship that models 2 ES nodes connection.
+    valid_target_types: [ alien.capabilities.ElasticSearch ]
+    interfaces:
+      Configure:
+          pre_configure_source:
+            inputs:
+              ES_IP: { get_attribute: [TARGET, ip_address] }
+            implementation: scripts/pre_configure_source.sh
+          pre_configure_target:
+            inputs:
+              ES_IP: { get_attribute: [SOURCE, ip_address] }
+            implementation: scripts/pre_configure_target.sh

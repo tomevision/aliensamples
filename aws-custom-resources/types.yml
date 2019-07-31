@@ -1,0 +1,219 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: aws-custom-resources
+  template_version: 1.4.0-SNAPSHOT
+  template_author: alien4cloud
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+  - mysql-type:1.4.0-SNAPSHOT
+
+data_types:
+  org.alien4cloud.datatypes.AgentConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      install_method:
+        type: string
+        required: true
+      user:
+        type: string
+        required: false
+      key:
+        type: string
+        required: false
+
+node_types:
+
+  org.alien4cloud.aws.cloudify.EC2Instance:
+    derived_from: org.alien4cloud.aws.EC2Instance
+    description: |
+      Launch an ec2 instance. Needs aws cli to be installed on the host (usually a 'manager' since this is a compute resource).
+      Information about the key and the user is needed for cloudify manager to establish connection to the created compute
+    properties:
+      agent_config:
+        type: org.alien4cloud.datatypes.AgentConfig
+
+  org.alien4cloud.aws.puccini.EC2Instance:
+    derived_from: org.alien4cloud.aws.EC2Instance
+    description: |
+      Launch an ec2 instance. Needs to use an image of micro manager with aws installed.
+      Information about the key and the user is needed for puccini to establish connection to the created compute
+    properties:
+      user:
+        type: string
+        required: false
+      key_content:
+        type: string
+        required: false
+
+  org.alien4cloud.aws.EC2Instance:
+    derived_from: tosca.nodes.Compute
+    properties:
+      aws_access_key_id:
+        type: string
+        required: true
+      aws_secret_access_key:
+        type: string
+        required: true
+      aws_default_region:
+        type: string
+        required: true
+      image_id:
+        type: string
+        required: true
+      instance_type:
+        type: string
+        required: true
+      security_group_ids:
+        type: string
+        required: true
+      key_name:
+        type: string
+    attributes:
+      ip_address: { get_operation_output: [ SELF, Standard, start, IP_ADDRESS ] }
+      public_ip_address: { get_operation_output: [ SELF, Standard, start, PUBLIC_IP_ADDRESS ] }
+      instance_id: { get_operation_output: [ SELF, Standard, start, INSTANCE_ID ] }
+      #aws_resource_id: { get_operation_output: [ SELF, Standard, start, INSTANCE_ID ] }
+      #placement: { get_operation_output: [ SELF, Standard, start, AVAILIBILITY_ZONE ] }
+    interfaces:
+      Standard:
+        start:
+          inputs:
+            AWS_ACCESS_KEY_ID: { get_property: [ SELF, aws_access_key_id ] }
+            AWS_SECRET_ACCESS_KEY: { get_property: [ SELF, aws_secret_access_key ] }
+            AWS_DEFAULT_REGION: { get_property: [ SELF, aws_default_region ] }
+            IMAGE_ID: { get_property: [ SELF, image_id ] }
+            INSTANCE_TYPE: { get_property: [ SELF, instance_type ] }
+            SECURITY_GROUP_IDS: { get_property: [ SELF, security_group_ids ] }
+            KEY_NAME: { get_property: [ SELF, key_name ] }
+          implementation: scripts/EC2Instance/start.sh
+        stop:
+          inputs:
+            AWS_ACCESS_KEY_ID: { get_property: [ SELF, aws_access_key_id ] }
+            AWS_SECRET_ACCESS_KEY: { get_property: [ SELF, aws_secret_access_key ] }
+            AWS_DEFAULT_REGION: { get_property: [ SELF, aws_default_region ] }
+            INSTANCE_ID: { get_attribute: [ SELF, instance_id ] }
+          implementation: scripts/EC2Instance/stop.sh
+        delete:
+          inputs:
+            AWS_ACCESS_KEY_ID: { get_property: [ SELF, aws_access_key_id ] }
+            AWS_SECRET_ACCESS_KEY: { get_property: [ SELF, aws_secret_access_key ] }
+            AWS_DEFAULT_REGION: { get_property: [ SELF, aws_default_region ] }
+            INSTANCE_ID: { get_attribute: [ SELF, instance_id ] }
+          implementation: scripts/EC2Instance/delete.sh
+
+  org.alien4cloud.aws.AbstractMariaDB:
+    derived_from: org.alien4cloud.nodes.AbstractMysql
+    abstract: true
+    description: create mariaDB instance via aws rds. Needs aws cli to be installed on the host (usually a 'manager' since this is a compute resource).
+    metadata:
+      icon: images/mariaDB-aws.png
+
+  org.alien4cloud.aws.MariaDB:
+    derived_from: org.alien4cloud.aws.AbstractMariaDB
+    description: create mariaDB instance via aws rds. Needs aws cli to be installed on the host (usually a 'manager' since this is a compute resource).
+    attributes:
+      endpoint_address: { concat: [get_operation_output: [SELF, Standard, start, ENDPOINT_ADDRESS], ":", get_property: [SELF, port]] }
+      bdinstance_arn: { get_operation_output: [SELF, Standard, start, DBINSTANCE_ARN]}
+    properties:
+      aws_access_key_id:
+        type: string
+        required: true
+      aws_secret_access_key:
+        type: string
+        required: true
+      aws_default_region:
+        type: string
+        required: true
+      identifier:
+        type: string
+        description: DB instance identifier. This is the unique key that identifies a DB instance. This parameter is stored as a lowercase string.
+        required: true
+      class:
+        type: string
+        required: true
+        description: Contains the compute and memory capacity of the DB instance.
+        constraints:
+            - valid_values: [db.t1.micro , db.m1.small , db.m1.medium , db.m1.large , db.m1.xlarge , db.m2.xlarge , db.m2.2xlarge , db.m2.4xlarge , db.cr1.8xlarge , db.m3.medium , db.m3.large , db.m3.xlarge , db.m3.2xlarge , db.r3.large , db.r3.xlarge , db.r3.2xlarge , db.r3.4xlarge , db.r3.8xlarge , db.t2.micro , db.t2.small , db.t2.medium , db.t2.large , db.m4.large , db.m4.xlarge , db.m4.2xlarge , db.m4.4xlarge , db.m4.10xlarge]
+        default: db.t2.micro
+      license_model:
+        type: string
+        required: true
+        description: License model for this DB instance.
+        constraints:
+            - valid_values: [license-included , bring-your-own-license , general-public-license]
+        default: general-public-license
+      multi-az:
+        type: boolean
+        required: true
+        description: Specifies if this is a Multi-AZ deployment.
+        default: false
+      storage-type:
+        type: string
+        required: true
+        description: Specifies the storage type for the DB instance.
+        constraints:
+            - valid_values: [standard , gp2 , io1]
+        default: standard
+      name:
+        type: string
+        required: false
+        description: The database name
+        default: petclinic
+      user:
+        type: string
+        required: true
+        description: The name of the master database user.
+        default: root
+      password:
+        type: string
+        required: true
+        description: Password for the master DB instance user.
+        constraints:
+          - min_length: 8
+        default: petclinic
+      allocated-storage:
+        type: integer
+        required: true
+        description: Amount of storage to be initially allocated for the DB instance, in gigabytes.
+        constraints:
+          - greater_than: 4
+        default: 5
+      security_group_ids:
+        type: string
+        required: true
+    interfaces:
+      Standard:
+        start:
+          inputs:
+            AWS_ACCESS_KEY_ID: { get_property: [ SELF, aws_access_key_id ] }
+            AWS_SECRET_ACCESS_KEY: { get_property: [ SELF, aws_secret_access_key ] }
+            AWS_DEFAULT_REGION: { get_property: [ SELF, aws_default_region ] }
+            INSTANCE_ID: { get_property: [SELF, identifier] }
+            INSTANCE_CLASS: { get_property: [SELF, class] }
+            LICENSE_MODEL: { get_property: [SELF, license_model] }
+            MULTI_AZ: { get_property: [SELF, multi-az] }
+            STORAGE_TYPE: { get_property: [SELF, storage-type] }
+            PORT: { get_property: [SELF, database_endpoint, port] }
+            ALLOCATED_STORAGE: { get_property: [SELF, allocated-storage] }
+            DB_NAME: { get_property: [SELF, name] }
+            MASTER: { get_property: [SELF, user] }
+            PASSWORD: { get_property: [SELF, password] }
+            SECURITY_GROUP_IDS: { get_property: [ SELF, security_group_ids ] }
+          implementation: scripts/MariaDB/start.sh
+        delete:
+          inputs:
+            AWS_ACCESS_KEY_ID: { get_property: [ SELF, aws_access_key_id ] }
+            AWS_SECRET_ACCESS_KEY: { get_property: [ SELF, aws_secret_access_key ] }
+            AWS_DEFAULT_REGION: { get_property: [ SELF, aws_default_region ] }
+            INSTANCE_ID: { get_property: [SELF, identifier] }
+          implementation: scripts/MariaDB/delete.sh
+
+  org.alien4cloud.aws.MariaDBService:
+    derived_from: org.alien4cloud.aws.MariaDB
+    description: Re-use an up and running MariaDB instance
+    attributes:
+      ip_address:
+        type: string
+        description: ip or domain name of the MariaDB instance
