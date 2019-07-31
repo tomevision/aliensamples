@@ -12,7 +12,7 @@ imports:
 
 node_types:
   org.alien4cloud.nodes.File:
-    derived_from: tosca.nodes.Root
+    derived_from: org.alien4cloud.nodes.Root
     description: >
       The TOSCA File Node Type.
     properties:
