@@ -9,10 +9,11 @@ description: TOSCA simple profile with File
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN14
+  - 'http://www.getcloudify.org/spec/cloudify/5.0.0/types.yaml'
 
 node_types:
   org.alien4cloud.nodes.File:
-    derived_from: org.alien4cloud.nodes.Root
+    derived_from: cloudify.nodes.Root
     description: >
       The TOSCA File Node Type.
     properties:
