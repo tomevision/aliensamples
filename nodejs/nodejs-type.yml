@@ -7,14 +7,13 @@ metadata:
 
 description: TOSCA simple profile with File
 
-imports:
-  - tosca-normative-types:1.0.0-ALIEN14
 
+imports:
+  - 'http://www.getcloudify.org/spec/cloudify/5.0.0/types.yaml'
+  - 'http://www.getcloudify.org/spec/utilities-plugin/1.14.0/plugin.yaml'
 node_types:
-  org.alien4cloud.nodes.File:
-    derived_from: tosca.nodes.Root
-    description: >
-      The TOSCA File Node Type.
+  visionspace.nodes.File:
+    derived_from: cloudify.nodes.Root
     properties:
       key_values:
         default: ''
@@ -45,14 +44,22 @@ node_types:
         description: File_Path
         required: false
         type: string
-    
-    metadata:
-      icon: /images/file.png
     interfaces:
-      Standard:
+      cloudify.interfaces.lifecycle:
         create:
-          inputs:
-            COMPONENT_VERSION: { get_property: [SELF, component_version] }
-          implementation: scripts/install-nodejs.sh
-
-
+          implementation: secrets.cloudify_files.tasks.create
+          inputs: {}
+node_templates:
+  New_File_6:
+    type: visionspace.nodes.File
+    capabilities:
+      scalable:
+        properties:
+          default_instances: 1
+    properties:
+      permission: ''
+      use_sudo: true
+      owner: ''
+      file_path: ''
+      key_values: ''
+    relationships: []
