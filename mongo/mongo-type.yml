@@ -16,7 +16,7 @@ node_types:
     abstract: true
 
     metadata:
-      icon: /images/mongodb.jpg
+      icon: /images/javascript.png
     properties:
       port:
         type: integer
