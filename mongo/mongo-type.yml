@@ -23,11 +23,6 @@ node_types:
         default: 27017
         constraints:
           - in_range: [8000,65535]
-      key_values:
-        default: ''
-        description: ''
-        
-        required: false
       use_sudo:
         default: true
         description: >-
