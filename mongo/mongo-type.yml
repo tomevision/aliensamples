@@ -5,7 +5,7 @@ metadata:
   template_version: 1.0.0-SNAPSHOT
   template_author: visionspace
 
-description: Filr types for any systems.
+description: File types for any systems.
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN14
@@ -13,16 +13,11 @@ imports:
 node_types:
   org.alien4cloud.nodes.File:
     derived_from: tosca.nodes.Root
-    abstract: true
-
+   
     metadata:
       icon: /images/javascript.png
     properties:
-      port:
-        type: integer
-        default: 27017
-        constraints:
-          - in_range: [8000,65535]
+      
       use_sudo:
         default: true
         description: >-
