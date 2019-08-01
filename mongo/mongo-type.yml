@@ -16,36 +16,7 @@ node_types:
    
     metadata:
       icon: /images/javascript.png
-    properties:
-      port:
-        type: integer
-        default: 3306
-        description: The port on which the underlying database service will listen to data.
-      use_sudo:
-        type: boolean
-        default: true
-        description: >-
-          Whether or not to use sudo to move, rename, delete, chown,
-          chmod,           the file.
-        required: true
-      permission:
-        type: integer
-        default: ''
-        description: >-
-          The file permissions, such as 777. Must be provided as an
-          integer.           "0777" and 0777 are not valid. Only 777.
-        required: false
-      owner:
-        type: string
-        default: ''
-        description: 'The owner string, such as "centos:wheel"'
-        required: true
-       
-      file_path:
-        type: string
-        default: ''
-        description: File_Path
-        required: false
+    
         
     
 
